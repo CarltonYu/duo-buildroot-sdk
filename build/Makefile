@@ -626,9 +626,9 @@ sd_image:
 	$(call print_target)
 	-${Q}rm  $(OUTPUT_DIR)/fs
 ifeq ($(CONFIG_BUILDROOT_FS),y)
-	${Q}rm $(OUTPUT_DIR)/br-rootfs -rf
+	${Q}rm -rf /tmp/br-rootfs-local && rm -f $(OUTPUT_DIR)/br-rootfs
 	${Q}ln -s $(OUTPUT_DIR)/br-rootfs $(OUTPUT_DIR)/fs
-	${Q}mkdir $(OUTPUT_DIR)/br-rootfs
+	${Q}mkdir -p /tmp/br-rootfs-local && ln -sfn /tmp/br-rootfs-local $(OUTPUT_DIR)/br-rootfs
 	${Q}tar xvf $(BR_DIR)/output/$(BR_BOARD)/images/rootfs.tar.xz -C $(OUTPUT_DIR)/br-rootfs
 else
 	${Q}ln -s $(OUTPUT_DIR)/rootfs $(OUTPUT_DIR)/fs

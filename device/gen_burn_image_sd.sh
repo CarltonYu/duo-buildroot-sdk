@@ -32,7 +32,7 @@ output_dir=$1
 echo ${output_dir}
 pushd ${output_dir}
 
-[ -d tmp ] && rm -rf tmp
+rm -rf /tmp/genimage-tmp && mkdir -p /tmp/genimage-tmp && rm -f tmp && ln -sfn /tmp/genimage-tmp tmp
 
 genimage --config ${TOP_DIR}/device/${MV_BOARD}/genimage.cfg --rootpath fs/ --inputpath ${PWD} --outputpath ${PWD}
 if [ $? -eq 0 ]; then

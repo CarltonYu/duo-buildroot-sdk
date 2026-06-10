@@ -10,10 +10,46 @@
 
 &spi2 {
 	status = "okay";
+	num-cs = <1>;
+	/delete-node/ spidev@0;
 
-	spidev@0 {
+	/* GC9A01 240x240 round LCD on SPI2 CS0. */
+	gc9a01: display@0 {
+		compatible = "galaxycore,gc9a01";
+		reg = <0>;
 		status = "okay";
+		spi-max-frequency = <8000000>;
+		width = <240>;
+		height = <240>;
+		rotate = <0>;
+		fps = <30>;
+		buswidth = <8>;
+		reset-gpios = <&porte 21 GPIO_ACTIVE_LOW>;  /* Duo Pin 11: GP8 */
+		dc-gpios = <&porte 25 GPIO_ACTIVE_HIGH>;    /* Duo Pin 5: GP3 */
+		debug = <0x0>;
 	};
+
+	/*
+	 * ST7789/ST7789V can use the same SPI2 wiring. Keep one display enabled
+	 * per chip select: disable the GC9A01 node above before enabling this.
+	 *
+	 * st7789v: display@0 {
+	 *	compatible = "sitronix,st7789v";
+	 *	reg = <0>;
+	 *	status = "okay";
+	 *	spi-max-frequency = <8000000>;
+	 *	spi-cpol;
+	 *	spi-cpha;
+	 *	width = <240>;
+	 *	height = <320>;
+	 *	rotate = <0>;
+	 *	fps = <30>;
+	 *	buswidth = <8>;
+	 *	reset-gpios = <&porte 21 GPIO_ACTIVE_LOW>;
+	 *	dc-gpios = <&porte 25 GPIO_ACTIVE_HIGH>;
+	 *	debug = <0x0>;
+	 * };
+	 */
 };
 
 &uart1 {
@@ -40,4 +76,3 @@
 / {
 	model = "Milk-V Duo";
 };
-
