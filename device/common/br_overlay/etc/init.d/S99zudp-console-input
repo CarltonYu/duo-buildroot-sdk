@@ -1,0 +1,50 @@
+#!/bin/sh
+# Start UDP console input daemon: inject received text into local tty1
+# so it appears on the ST7789V framebuffer console.
+
+PIDFILE=/var/run/udp-console-input-daemon.pid
+NO_RESPAWN_FLAG=/var/run/udp-console-input-daemon.no-respawn
+DAEMON=/usr/bin/udp-console-input-daemon
+TTY=/dev/tty1
+PORT=25251
+
+start_daemon() {
+  # Wait for the framebuffer console to be available.
+  for i in $(seq 1 30); do
+    [ -c "$TTY" ] && break
+    sleep 1
+  done
+  if [ ! -c "$TTY" ]; then
+    echo "$(date) $TTY not available, aborting" >> /tmp/udp-console-input.log
+    return 1
+  fi
+  "$DAEMON" --udp-port "$PORT" --tty "$TTY" >> /tmp/udp-console-input.log 2>&1
+}
+
+case "$1" in
+  start)
+    rm -f "$NO_RESPAWN_FLAG"
+    killall udp-console-input-daemon 2>/dev/null || true
+    ( while [ ! -f "$NO_RESPAWN_FLAG" ]; do
+        start_daemon
+        [ -f "$NO_RESPAWN_FLAG" ] && break
+        echo "$(date) udp-console-input-daemon exited, restarting in 3s..." >> /tmp/udp-console-input.log
+        sleep 3
+      done ) &
+    echo $! > "$PIDFILE"
+    ;;
+  stop)
+    touch "$NO_RESPAWN_FLAG"
+    killall udp-console-input-daemon 2>/dev/null || true
+    rm -f "$PIDFILE"
+    ;;
+  restart)
+    $0 stop
+    sleep 1
+    $0 start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+    ;;
+esac

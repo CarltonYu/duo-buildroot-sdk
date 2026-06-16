@@ -65,6 +65,7 @@ inst_mod() {
   insmod /mnt/system/ko/usb_f_ecm.ko
   insmod /mnt/system/ko/usb_f_eem.ko
   insmod /mnt/system/ko/usb_f_rndis.ko
+  insmod /mnt/system/ko/usb_f_hid.ko
 }
 
 case "$1" in

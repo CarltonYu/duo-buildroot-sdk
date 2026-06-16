@@ -230,7 +230,7 @@
 	#endif
 
 	#define OTHERBOOTARGS   "earlycon=sbi riscv.fwsz="  __stringify(CVIMMAP_OPENSBI_SIZE) \
-		EARLYCON_RELEASE CONSOLE_LOGLEVEL
+		EARLYCON_RELEASE CONSOLE_LOGLEVEL " fbcon=font:8x8"
 
 	/* config mtdids */
 	#ifdef CONFIG_NAND_SUPPORT

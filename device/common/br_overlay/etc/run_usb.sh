@@ -6,6 +6,7 @@ RNDIS_PID=0x1009
 UVC_PID=0x100A
 UAC_PID=0x100B
 NCM_PID=0x100C
+HID_PID=0x100D
 ADB_VID=0x18D1
 ADB_PID=0x4EE0
 ADB_PID_M1=0x4EE2
@@ -14,6 +15,7 @@ MANUFACTURER="Cvitek"
 PRODUCT="USB Com Port"
 PRODUCT_NCM="NCM"
 PRODUCT_RNDIS="RNDIS"
+PRODUCT_HID="HID"
 PRODUCT_UVC="UVC"
 PRODUCT_UAC="UAC"
 PRODUCT_ADB="ADB"
@@ -61,6 +63,11 @@ case "$2" in
 	PID=$UAC_PID
 	PRODUCT=$PRODUCT_UAC
 	;;
+  hid)
+	CLASS=hid
+	PID=$HID_PID
+	PRODUCT=$PRODUCT_HID
+	;;
   adb)
 	CLASS=ffs.adb
 	VID=$ADB_VID
@@ -69,7 +76,7 @@ case "$2" in
 	;;
   *)
 	if [ "$1" = "probe" ] ; then
-	  echo "Usage: $0 probe {acm|msc|cvg|ncm|rndis|uvc|uac1|adb}"
+	  echo "Usage: $0 probe {acm|msc|cvg|ncm|rndis|uvc|uac1|hid|adb}"
 	  exit 1
 	fi
 esac
@@ -116,6 +123,9 @@ res_check() {
   EP_IN=$(($EP_IN+$TMP_NUM))
   EP_OUT=$(($EP_OUT+$TMP_NUM))
   INTF_NUM=$(($INTF_NUM+$TMP_NUM))
+  TMP_NUM=$(find $CVI_GADGET/functions/ -name "hid*" | wc -l)
+  EP_IN=$(($EP_IN+$TMP_NUM))
+  INTF_NUM=$(($INTF_NUM+$TMP_NUM))
 
   if [ "$CLASS" = "acm" ] ; then
     EP_IN=$(($EP_IN+2))
@@ -143,6 +153,9 @@ res_check() {
   if [ "$CLASS" = "uac1" ] ; then
     EP_IN=$(($EP_IN+1))
     EP_OUT=$(($EP_OUT+1))
+  fi
+  if [ "$CLASS" = "hid" ] ; then
+    EP_IN=$(($EP_IN+1))
   fi
   if [ "$CLASS" = "ffs.adb" ] ; then
     EP_IN=$(($EP_IN+1))
@@ -234,6 +247,14 @@ probe() {
     echo 1 >$CVI_FUNC/rndis.usb$FUNC_NUM/os_desc/interface.rndis/Label/type
     echo "XYZ Device" >$CVI_FUNC/rndis.usb$FUNC_NUM/os_desc/interface.rndis/Label/data
   fi
+  if [ "$CLASS" = "hid" ] ; then
+    HID_FUNC=$CVI_FUNC/hid.usb$FUNC_NUM
+    # Boot keyboard report descriptor: 8-byte report (modifier + reserved + 6 keys)
+    printf '\x05\x01\x09\x06\xa1\x01\x05\x07\x19\xe0\x29\xe7\x15\x00\x25\x01\x75\x01\x95\x08\x81\x02\x95\x01\x75\x08\x81\x01\x95\x06\x75\x08\x15\x00\x25\x65\x05\x07\x19\x00\x29\x65\x81\x00\xc0' >$HID_FUNC/report_desc
+    echo 1 >$HID_FUNC/protocol
+    echo 1 >$HID_FUNC/subclass
+    echo 8 >$HID_FUNC/report_length
+  fi
 
 }
 
@@ -303,7 +324,7 @@ case "$1" in
 	ls /sys/class/udc/ >$CVI_GADGET/UDC
 	;;
   *)
-	echo "Usage: $0 probe {acm|msc|cvg|ncm|uvc|uac1} {file (msc)}"
+	echo "Usage: $0 probe {acm|msc|cvg|ncm|uvc|uac1|hid} {file (msc)}"
 	echo "Usage: $0 start"
 	echo "Usage: $0 stop"
 	exit 1
