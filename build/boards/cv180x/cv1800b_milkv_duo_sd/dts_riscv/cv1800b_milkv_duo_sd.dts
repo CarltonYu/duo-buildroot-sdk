@@ -10,46 +10,56 @@
 
 &spi2 {
 	status = "okay";
-	num-cs = <1>;
+	num-cs = <2>;
+	/*
+	 * Both chip-selects are GPIO-controlled because the DesignWare SPI
+	 * controller on CV1800B only has a single native CS line (CS0) and
+	 * cannot drive the shift engine for chip-select 1.  We keep CS0
+	 * selected in hardware SER and toggle the actual GPIOs from software.
+	 */
+	cs-gpios = <&porte 18 GPIO_ACTIVE_LOW>,   /* Pin12: GP9 / PWR_GPIO_18, ST7789V */
+	           <&porte 4 GPIO_ACTIVE_LOW>;    /* Pin29: GP22 / PWR_GPIO_4,  GC9A01  */
 	/delete-node/ spidev@0;
 
-	/* GC9A01 240x240 round LCD on SPI2 CS0. */
-	gc9a01: display@0 {
-		compatible = "galaxycore,gc9a01";
+	/*
+	 * ST7789V 240x320 LCD on SPI2 SCK/MOSI, GPIO CS on Pin12.
+	 * Probed by the built-in fbtft ST7789V driver as /dev/fb0.
+	 */
+	st7789v: display@0 {
+		compatible = "sitronix,st7789v";
 		reg = <0>;
 		status = "okay";
-		spi-max-frequency = <8000000>;
+		/* SPI mode 0, 32 MHz. ST7789V datasheet max is ~62.5 MHz;
+		 * 32 MHz is a safe starting point with the current wiring.
+		 */
+		spi-max-frequency = <32000000>;
+		/* Mode 0: CPOL=0, CPHA=0 (default when spi-cpol/spi-cpha absent) */
 		width = <240>;
-		height = <240>;
-		rotate = <0>;
+		height = <320>;
+		rotate = <270>;
 		fps = <30>;
 		buswidth = <8>;
-		reset-gpios = <&porte 21 GPIO_ACTIVE_LOW>;  /* Duo Pin 11: GP8 */
-		dc-gpios = <&porte 25 GPIO_ACTIVE_HIGH>;    /* Duo Pin 5: GP3 */
-		debug = <0x0>;
+		reset-gpios = <&porta 23 GPIO_ACTIVE_LOW>;  /* Duo Pin 21: XGPIOA_23, ST7789V RST */
+		dc-gpios    = <&porta 24 GPIO_ACTIVE_HIGH>; /* Duo Pin 22: XGPIOA_24, ST7789V DC  */
+		bgr;
+		/*
+		 * Pin5/Pin11 (PWR_GPIO_25/21) are kept free for the GC9A01 DC/RST in
+		 * user-space.  The default GPIO mux already assigns Pin21/Pin22 as
+		 * XGPIOA_23/XGPIOA_24.
+		 */
 	};
 
 	/*
-	 * ST7789/ST7789V can use the same SPI2 wiring. Keep one display enabled
-	 * per chip select: disable the GC9A01 node above before enabling this.
-	 *
-	 * st7789v: display@0 {
-	 *	compatible = "sitronix,st7789v";
-	 *	reg = <0>;
-	 *	status = "okay";
-	 *	spi-max-frequency = <8000000>;
-	 *	spi-cpol;
-	 *	spi-cpha;
-	 *	width = <240>;
-	 *	height = <320>;
-	 *	rotate = <0>;
-	 *	fps = <30>;
-	 *	buswidth = <8>;
-	 *	reset-gpios = <&porte 21 GPIO_ACTIVE_LOW>;
-	 *	dc-gpios = <&porte 25 GPIO_ACTIVE_HIGH>;
-	 *	debug = <0x0>;
-	 * };
+	 * GC9A01 240x240 round LCD is driven from user-space via /dev/spidev0.1.
+	 * Its chip-select is managed by the SPI core on Duo Pin29 GP22 (PWR_GPIO_4,
+	 * porte offset 4).  The user-space animation program no longer toggles CS.
 	 */
+	gc9a01_spi: spidev@1 {
+		compatible = "rohm,dh2228fv";
+		reg = <1>;
+		status = "okay";
+		spi-max-frequency = <12000000>;
+	};
 };
 
 &uart1 {

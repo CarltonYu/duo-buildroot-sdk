@@ -34,14 +34,16 @@ int cvi_board_init(void)
 	// UART 4
 	PINMUX_CONFIG(SD1_GPIO1, UART4_TX);
 
-	// SPI LCD control pins
-	PINMUX_CONFIG(SD1_GPIO0, PWR_GPIO_25); // Duo Pin 5: GP3, LCD D/C
-	PINMUX_CONFIG(SD1_D0, PWR_GPIO_21);    // Duo Pin 11: GP8, LCD RST
+	// GC9A01 user-space control pins (do not let the kernel claim these)
+	PINMUX_CONFIG(SD1_GPIO0, PWR_GPIO_25); // Duo Pin 5:  GP3, GC9A01 D/C
+	PINMUX_CONFIG(SD1_D0, PWR_GPIO_21);    // Duo Pin 11: GP8, GC9A01 RST
+
+	// ST7789V control pins are Pin21/Pin22 (XGPIOA_23/24), already set above.
 
 	// SPI LCD data pins
 	PINMUX_CONFIG(SD1_CLK, SPI2_SCK);
 	PINMUX_CONFIG(SD1_CMD, SPI2_SDO);
-	PINMUX_CONFIG(SD1_D3, SPI2_CS_X);
+	PINMUX_CONFIG(SD1_D3, PWR_GPIO_18);    // Duo Pin 12: GP9, LCD CS (GPIO-controlled)
 
 	return 0;
 }

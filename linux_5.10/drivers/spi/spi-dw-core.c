@@ -213,6 +213,7 @@ static irqreturn_t dw_spi_transfer_handler(struct dw_spi *dws)
 	u16 irq_status = dw_readl(dws, DW_SPI_ISR);
 
 	if (dw_spi_check_status(dws, false)) {
+		dw_writel(dws, DW_SPI_SER, 0);
 		spi_finalize_current_transfer(dws->master);
 		return IRQ_HANDLED;
 	}
@@ -227,6 +228,7 @@ static irqreturn_t dw_spi_transfer_handler(struct dw_spi *dws)
 	dw_reader(dws);
 	if (!dws->rx_len) {
 		spi_mask_intr(dws, 0xff);
+		dw_writel(dws, DW_SPI_SER, 0);
 		spi_finalize_current_transfer(dws->master);
 	} else if (dws->rx_len <= dw_readl(dws, DW_SPI_RXFTLR)) {
 		dw_writel(dws, DW_SPI_RXFTLR, dws->rx_len - 1);
@@ -441,11 +443,39 @@ static int dw_spi_transfer_one(struct spi_controller *master,
 	}
 
 	spi_enable_chip(dws, 1);
+	/*
+	 * DW SPI needs a bit set in SER to start shifting even when using
+	 * GPIO-based chip-selects.  The SPI core only toggles GPIO CS in that
+	 * case, so we have to manage SER here ourselves.
+	 *
+	 * On CV1800B only bit 0 of the Slave Enable Register is wired to a
+	 * physical pin; higher chip-select numbers are implemented via GPIO
+	 * CS.  Always select native CS0 in SER so the shift engine runs for
+	 * any device on this bus.
+	 */
+	dw_writel(dws, DW_SPI_SER, BIT(0));
 
-	if (dws->dma_mapped)
-		return dws->dma_ops->dma_transfer(dws, transfer);
-	else if (dws->irq == IRQ_NOTCONNECTED)
-		return dw_spi_poll_transfer(dws, transfer);
+	/* Debug: confirm the SER patch is in effect (rate-limited). */
+	{
+		static int __maybe_unused ser_print_count;
+		if (ser_print_count < 8) {
+			dev_info(&spi->dev,
+				 "dw_spi_transfer_one cs=%u speed=%u SER=%#x\n",
+				 spi->chip_select, transfer->speed_hz,
+				 dw_readl(dws, DW_SPI_SER));
+			ser_print_count++;
+		}
+	}
+
+	if (dws->dma_mapped) {
+		ret = dws->dma_ops->dma_transfer(dws, transfer);
+		dw_writel(dws, DW_SPI_SER, 0);
+		return ret;
+	} else if (dws->irq == IRQ_NOTCONNECTED) {
+		ret = dw_spi_poll_transfer(dws, transfer);
+		dw_writel(dws, DW_SPI_SER, 0);
+		return ret;
+	}
 
 	dw_spi_irq_setup(dws);
 
